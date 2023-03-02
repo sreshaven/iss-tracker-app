@@ -7,9 +7,9 @@ from flask import Flask, request
 app = Flask(__name__)
 
 response = requests.get(url='https://nasa-public-data.s3.amazonaws.com/iss-coords/current/ISS_OEM/ISS.OEM_J2K_EPH.xml')
-iss_data = xmltodict.parse(response.text)
-# get the state vectors data 
-iss_data = iss_data['ndm']['oem']['body']['segment']['data']['stateVector']
+iss_data_all = xmltodict.parse(response.text)
+# get the state vectors data
+iss_data = iss_data_all['ndm']['oem']['body']['segment']['data']['stateVector']
 
 @app.route('/', methods=['GET'])
 def index() -> list:
@@ -146,6 +146,47 @@ def post_data() -> str:
     iss_data = iss_data['ndm']['oem']['body']['segment']['data']['stateVector']
     return 'ISS Data has been reloaded\n'
 
+@app.route('/comment', methods=['GET'])
+def get_comment_data() -> list:
+    """
+    return the list of comments in the ISS dataset
+
+    Args:
+        no arguments
+
+    Returns:
+        output (list): list of comments in ISS dataset
+    """
+    output = iss_data_all['ndm']['oem']['body']['segment']['data']['comment']
+    return output
+
+@app.route('/header', methods=['GET'])
+def get_header_data() -> dict:
+    """
+    return the dictionary for the header in the ISS dataset
+
+    Args:
+        no arguments
+
+    Returns:
+        output (dict): header dictionary in ISS dataset
+    """
+    output = iss_data_all['ndm']['oem']['header']
+    return output
+
+@app.route('/metadata', methods=['GET'])
+def get_metadata() -> dict:
+    """
+    return the dictionary for metadata in the ISS dataset
+
+    Args:
+        no arguments
+
+    Returns:
+        output (dict): metadata dictionary in ISS dataset
+    """
+    output = iss_data_all['ndm']['oem']['body']['segment']['metadata']
+    return output
 
 if __name__ == '__main__':
     app.run(debug=True, host='0.0.0.0')
