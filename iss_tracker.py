@@ -3,8 +3,13 @@ import requests
 import math
 import json
 from flask import Flask, request
+from geopy.geocoders import Nominatim
+
+geocoder = Nominatim(user_agent='iss_tracker')
 
 app = Flask(__name__)
+
+MEAN_EARTH_RADIUS = 6378.137 #in units of km
 
 response = requests.get(url='https://nasa-public-data.s3.amazonaws.com/iss-coords/current/ISS_OEM/ISS.OEM_J2K_EPH.xml')
 iss_data_all = xmltodict.parse(response.text)
@@ -98,6 +103,37 @@ def get_speed(epoch: str) -> str:
     else:
         return "The specified epoch was not found\n"
 
+@app.route('/epochs/<epoch>/location', methods=['GET'])
+def get_location(epoch: str) -> dict:
+    """
+    Uses the get_state_vectors function to find the state vectors and calculate the latitude, longitude, altitude, and geoposition
+
+    Args:
+        epoch (str): the time stamp for a data point
+
+    Returns:
+        location_data (dict): the dictionary of location information at specified epoch, if epoch was not found in the dataset, will return an empty dictionary
+    """
+    epoch_dat = get_state_vectors(epoch)
+    location_data = {}
+    if len(epoch_dat) != 0:
+        epoch = epoch_dat['EPOCH']
+        hrs = int(epoch[9:11])
+        mins = int(epoch[12:14])
+        x = epoch_dat['X']
+        y = epoch_dat['Y']
+        z = epoch_dat['Z']
+        location_data['LATITUDE'] = math.degrees(math.atan2(z, math.sqrt(x**2 + y**2)))
+        location_data['LONGITUDE'] = math.degrees(math.atan2(y, x)) - ((hrs-12)+(mins/60))*(360/24) + 24
+        location_data['ALTITUDE'] = {
+                'value': math.sqrt(x**2 + y**2 + z**2) - MEAN_EARTH_RADIUS,
+                'units': "km"
+                }
+        location_data['GEOPOSITION'] = geocoder.reverse((location_data['LATITUDE'], location_data['LONGITUDE']), zoom=15, language='en')
+        if (location_data['GEOPOSITION'] is None):
+            location_data['GEOPOSITION'] = "No geolocation data available, ISS is over the ocean"
+    return location_data
+
 @app.route('/help', methods=['GET'])
 def help() -> str:
     """
@@ -157,7 +193,7 @@ def get_comment_data() -> list:
     Returns:
         output (list): list of comments in ISS dataset
     """
-    output = iss_data_all['ndm']['oem']['body']['segment']['data']['comment']
+    output = iss_data_all['ndm']['oem']['body']['segment']['data']['COMMENT']
     return output
 
 @app.route('/header', methods=['GET'])
