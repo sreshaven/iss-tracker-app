@@ -1,0 +1,11 @@
+---
+version: "3"
+
+services:
+    iss-tracker-app:
+        build:
+            context: ./ 
+            dockerfile: ./Dockerfile
+        ports:
+            - 5000:5000
+        image: sreshaven/iss_tracker:midterm
