@@ -116,7 +116,10 @@ To get the instantaneous speed of the ISS for a specific Epoch in the dataset, r
 
 > **_Note:_** You may not receive the same output if this specific command is run since the dataset may have updated with new Epochs.
 ```
-7.661757196327827 km/s
+{
+  "units": "km/s",
+  "value": 7.66162719643147
+}
 ```
 
 To get help about the routes for this app, run `curl http://127.0.0.1:5000/help` and below is an example of the output:
@@ -130,6 +133,7 @@ Routes:
                 limit                          controls how many results are returned
                 offset                         offsets the start point by an integer
         /epochs/<epoch>                (GET) return state vectors for a specific Epoch from the data set
+        /epochs/<epoch>/speed          (GET) return instantaneous speed of the ISS for a specific Epoch
         /help                          (GET) return text about each route and their corresponding methods
         /delete-data                   (DELETE) delete all data from the dictionary object storing the data set
         /post-data                     (POST) reload the dictionary object with data from the web

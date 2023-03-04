@@ -2,6 +2,7 @@ import xmltodict
 import requests
 import math
 import json
+import time
 from flask import Flask, request
 from geopy.geocoders import Nominatim
 
@@ -86,7 +87,7 @@ def get_state_vectors(epoch: str) -> dict:
     return epoch_output
 
 @app.route('/epochs/<epoch>/speed', methods=['GET'])
-def get_speed(epoch: str) -> str:
+def get_speed(epoch: str) -> dict:
     """
     Uses the get_state_vectors function to find the state vectors and calculate the instantaneous speed at that time stamp
 
@@ -94,14 +95,14 @@ def get_speed(epoch: str) -> str:
         epoch (str): the time stamp for a data point
 
     Returns:
-        speed (str): the instantaneous speed at the time stamp, if epoch was not found in the dataset, will return message
+        speed_dict (dict): the instantaneous speed at the time stamp, if epoch was not found in the dataset, will return empty dictionary
     """
     epoch_dat = get_state_vectors(epoch)
+    speed_dict = {}
     if len(epoch_dat) != 0:
-        speed = math.sqrt(epoch_dat['X_DOT']**2 + epoch_dat['Y_DOT']**2 + epoch_dat['Z_DOT']**2)
-        return str(speed) + ' km/s\n'
-    else:
-        return "The specified epoch was not found\n"
+        speed_dict['value'] = math.sqrt(epoch_dat['X_DOT']**2 + epoch_dat['Y_DOT']**2 + epoch_dat['Z_DOT']**2)
+        speed_dict['units'] = "km/s"
+    return speed_dict
 
 @app.route('/epochs/<epoch>/location', methods=['GET'])
 def get_location(epoch: str) -> dict:
@@ -112,7 +113,7 @@ def get_location(epoch: str) -> dict:
         epoch (str): the time stamp for a data point
 
     Returns:
-        location_data (dict): the dictionary of location information at specified epoch, if epoch was not found in the dataset, will return an empty dictionary
+        location_data (dict): the dictionary of location information at specified epoch, if epoch was not found in the dataset, will return an empty dict
     """
     epoch_dat = get_state_vectors(epoch)
     location_data = {}
@@ -124,15 +125,54 @@ def get_location(epoch: str) -> dict:
         y = epoch_dat['Y']
         z = epoch_dat['Z']
         location_data['LATITUDE'] = math.degrees(math.atan2(z, math.sqrt(x**2 + y**2)))
-        location_data['LONGITUDE'] = math.degrees(math.atan2(y, x)) - ((hrs-12)+(mins/60))*(360/24) + 24
-        location_data['ALTITUDE'] = {
-                'value': math.sqrt(x**2 + y**2 + z**2) - MEAN_EARTH_RADIUS,
-                'units': "km"
-                }
-        location_data['GEOPOSITION'] = geocoder.reverse((location_data['LATITUDE'], location_data['LONGITUDE']), zoom=15, language='en')
-        if (location_data['GEOPOSITION'] is None):
+        longitude = math.degrees(math.atan2(y, x)) - ((hrs-12)+(mins/60))*(360/24) + 24
+        if (longitude > 180):
+            location_data['LONGITUDE'] = longitude - 360
+        elif (longitude < -180):
+            location_data['LONGITUDE'] = longitude + 360
+        else:
+            location_data['LONGITUDE'] = longitude
+        location_data['ALTITUDE'] = { 'value': math.sqrt(x**2 + y**2 + z**2) - MEAN_EARTH_RADIUS,
+                                      'units': "km" }
+        geoposition = geocoder.reverse((location_data['LATITUDE'], location_data['LONGITUDE']), zoom=10, language='en')
+        if (geoposition is None):
             location_data['GEOPOSITION'] = "No geolocation data available, ISS is over the ocean"
+        else:
+            location_data['GEOPOSITION'] = geoposition.raw["address"]
     return location_data
+
+@app.route('/now', methods=['GET'])
+def get_now() -> dict:
+    """
+    Gets the ISS location information for the Epoch that is nearest to the current time
+
+    Args:
+        no arguments
+
+    Returns:
+        iss_now (dict): the dictionary of location information, closest epoch, and speed
+    """
+    iss_now = {}
+    if len(iss_data) == 0:
+        return {}
+    min_difference = time.time() - time.mktime(time.strptime(iss_data[0]['EPOCH'][:-5], '%Y-%jT%H:%M:%S'))
+    min_state_vec = iss_data[0]
+    for state_vec in iss_data:
+        epoch = state_vec['EPOCH']
+        # gives present time in seconds since unix epoch
+        time_now = time.time()
+        # gives epoch (eg 2023-058T12:00:00.000Z) time in seconds since unix epoch
+        time_epoch = time.mktime(time.strptime(epoch[:-5], '%Y-%jT%H:%M:%S'))
+        difference = time_now - time_epoch
+        if abs(difference) < abs(min_difference):
+            min_difference = difference
+            min_state_vector = state_vec
+    iss_now['closest_epoch'] = min_state_vector['EPOCH']
+    iss_now['time_difference (sec)'] = min_difference
+    iss_now['location'] = get_location(min_state_vector['EPOCH'])
+    iss_now['speed'] = get_speed(min_state_vector['EPOCH'])
+    return iss_now
+
 
 @app.route('/help', methods=['GET'])
 def help() -> str:
@@ -146,7 +186,7 @@ def help() -> str:
         help_str (str):
     """
     help_str = "Usage: curl http://127.0.0.1:5000[ROUTE]\n\nRoutes:\n"
-    help_str += "\t{:<30} (GET) return the entire data set\n\t{:<30} (GET) return list of all Epochs in the data set\n\t{:<30} (GET) return modified list of Epochs given query parameters\n\t\t{:<30} controls how many results are returned\n\t\t{:<30} offsets the start point by an integer\n\t{:<30} (GET) return state vectors for a specific Epoch from the data set\n\t{:<30} (GET) return text about each route and their corresponding methods\n\t{:<30} (DELETE) delete all data from the dictionary object storing the data set \n\t{:<30} (POST) reload the dictionary object with data from the web\n".format("/","/epoch","/epochs?limit=int&offset=int", "limit", "offset", "/epochs/<epoch>", "/help", "/delete-data", "/post-data")
+    help_str += "\t{:<30} (GET) return the entire data set\n\t{:<30} (GET) return list of all Epochs in the data set\n\t{:<30} (GET) return modified list of Epochs given query parameters\n\t\t{:<30} controls how many results are returned\n\t\t{:<30} offsets the start point by an integer\n\t{:<30} (GET) return state vectors for a specific Epoch from the data set\n\t{:<30} (GET) return instantaneous speed of the ISS for a specific Epoch\n\t{:<30} (GET) return text about each route and their corresponding methods\n\t{:<30} (DELETE) delete all data from the dictionary object storing the data set \n\t{:<30} (POST) reload the dictionary object with data from the web\n".format("/","/epoch","/epochs?limit=int&offset=int", "limit", "offset", "/epochs/<epoch>", "/epochs/<epoch>/speed","/help", "/delete-data", "/post-data")
     return help_str
 
 @app.route('/delete-data', methods=['DELETE'])
