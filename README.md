@@ -144,11 +144,11 @@ Routes:
         /help                          (GET) return text about each route and their corresponding methods
         /delete-data                   (DELETE) delete all data from the dictionary object storing the data set
         /post-data                     (POST) reload the dictionary object with data from the web
-        /comment                       (GET) returns list of comments from ISS data
-        /header                        (GET) returns the header dictionary from the ISS dataset
-        /metadata                      (GET) returns the metadata dictionary from the ISS data
-        /epochs/<epoch>/location       (GET) returns lat, long, altitude, and geoposition for specified Epoch
-        /now                           (GET) returns location information about ISS for Epoch that is nearest to current time
+        /comment                       (GET) return list of comments from ISS data
+        /header                        (GET) return the header dictionary from the ISS dataset
+        /metadata                      (GET) return the metadata dictionary from the ISS data
+        /epochs/<epoch>/location       (GET) return lat, long, altitude, and geoposition for specified Epoch
+        /now                           (GET) return location information about ISS for Epoch that is nearest to current time
 ```
 
 #### Route: /delete-data
@@ -166,36 +166,112 @@ ISS Data has been reloaded
 #### Route: /comment
 To get the comments from the ISS dataset, run `curl http://127.0.0.1:5000/comment`. Below is an example of what the output should look like:
 ```
-
+[
+  "Units are in kg and m^2",
+  "MASS=461235.00",
+  "DRAG_AREA=1964.62",
+  "DRAG_COEFF=2.50",
+  "SOLAR_RAD_AREA=0.00",
+  "SOLAR_RAD_COEFF=0.00",
+  "Orbits start at the ascending node epoch",
+  "ISS first asc. node: EPOCH = 2023-03-01T12:07:31.114 $ ORBIT = 2508 $ LAN(DEG) = 161.00612",
+  "ISS last asc. node : EPOCH = 2023-03-16T11:13:47.515 $ ORBIT = 2740 $ LAN(DEG) = 85.61938",
+  "Begin sequence of events",
+  "TRAJECTORY EVENT SUMMARY:",
+  null,
+  "|       EVENT        |       TIG        | ORB |   DV    |   HA    |   HP    |",
+  "|                    |       GMT        |     |   M/S   |   KM    |   KM    |",
+  "|                    |                  |     |  (F/S)  |  (NM)   |  (NM)   |",
+  "=============================================================================",
+  "Crew06 Launch         061:05:34:13.000             0.0     427.0     408.8",
+  "(0.0)   (230.6)   (220.7)",
+...
 ```
 
 #### Route: /header
 To get the header from the ISS dataset, run `curl http://127.0.0.1:5000/header`. Below is an example of what the output should look like:
 ```
-
+{
+  "CREATION_DATE": "2023-060T20:39:58.746Z",
+  "ORIGINATOR": "JSC"
+}
 ```
 
 #### Route: /metadata
 To get the metadata from the ISS dataset, run `curl http://127.0.0.1:5000/metadata`. Below is an example of what the output should look like:
 ```
-
+{
+  "CENTER_NAME": "EARTH",
+  "OBJECT_ID": "1998-067-A",
+  "OBJECT_NAME": "ISS",
+  "REF_FRAME": "EME2000",
+  "START_TIME": "2023-060T12:00:00.000Z",
+  "STOP_TIME": "2023-075T12:00:00.000Z",
+  "TIME_SYSTEM": "UTC"
+}
 ```
 
 #### Route: /epochs/\<epoch\>/location
-To get the latitude, longitude, altitude, and geoposition of the ISS at a specific Epoch from the data set, run `curl http://127.0.0.1:5000/epochs/<epoch>/location` and replace \<epoch\> with an Epoch from the list of Epochs for the dataset. This will return longitude and latitude in units of degrees and altitude in units of km at that Epoch. Additionally, the dictionary will also geoposition information such as country and state only if the ISS is above land. Below is an example of what `  ` looks like to show the information provided if the ISS is above land:
+To get the latitude, longitude, altitude, and geoposition of the ISS at a specific Epoch from the data set, run `curl http://127.0.0.1:5000/epochs/<epoch>/location` and replace \<epoch\> with an Epoch from the list of Epochs for the dataset. This will return longitude and latitude in units of degrees and altitude in units of km at that Epoch. Additionally, the dictionary will also geoposition information such as country and state only if the ISS is above land. Below is an example of what `curl http://127.0.0.1:5000/epochs/2023-063T22:39:00.000Z/location` looks like to show the information provided if the ISS is above land:
 
 > **_Note:_** You may not receive the same output if this specific command is run since the dataset may have updated with new Epochs.
 ```
-
+{
+  "ALTITUDE": {
+    "units": "km",
+    "value": 409.55446196577486
+  },
+  "GEOPOSITION": {
+    "ISO3166-2-lvl4": "CN-NM",
+    "country": "China",
+    "country_code": "cn",
+    "county": "East Ujimqin Banner",
+    "region": "Xilingol League",
+    "state": "Inner Mongolia",
+    "town": "Alatanheli"
+  },
+  "LATITUDE": 45.384047833457544,
+  "LONGITUDE": 115.70787982166564
+}
 ```
 
-Below is an example of the output for `   ` which is when the ISS is over the ocean and there is no geoposition information:
+Below is an example of the output for `curl http://127.0.0.1:5000/epochs/2023-075T11:42:00.000Z/location` which is when the ISS is over the ocean and there is no geoposition information:
 ```
-
+{
+  "ALTITUDE": {
+    "units": "km",
+    "value": 409.19536548946144
+  },
+  "GEOPOSITION": "No geolocation data available, ISS is over the ocean",
+  "LATITUDE": 47.75437582760534,
+  "LONGITUDE": -144.2825627134153
+}
 ```
 
 ### Route: /now
-To get location information for the ISS for the Epoch that is closest to the current time, use `curl http://127.0.0.1:5000/now`. The output will have the location information described in the route above as well as the Epoch for the data that is being displayed and the difference in time between the Epoch and the current time in seconds and the speed at that time in km/s. Below is an example of what `  ` looks like:
+To get location information for the ISS for the Epoch that is closest to the current time, use `curl http://127.0.0.1:5000/now`. The output will have the location information described in the route above as well as the Epoch for the data that is being displayed and the difference in time between the Epoch and the current time in seconds and the speed at that time in km/s. Below is an example of what `curl http://127.0.0.1:5000/now` looks like:
 ```
-
+{
+  "closest_epoch": "2023-063T23:27:00.000Z",
+  "location": {
+    "ALTITUDE": {
+      "units": "km",
+      "value": 423.5195417656696
+    },
+    "GEOPOSITION": {
+      "ISO3166-2-lvl4": "AR-U",
+      "country": "Argentina",
+      "country_code": "ar",
+      "state": "Chubut Province",
+      "state_district": "Departamento Gastre"
+    },
+    "LATITUDE": -42.3982761683783,
+    "LONGITUDE": -69.44749010174421
+  },
+  "speed": {
+    "units": "km/s",
+    "value": 7.650706766667962
+  },
+  "time_difference (sec)": -103.42451333999634
+}
 ```
