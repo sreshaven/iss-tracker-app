@@ -125,7 +125,7 @@ def get_location(epoch: str) -> dict:
         y = epoch_dat['Y']
         z = epoch_dat['Z']
         location_data['LATITUDE'] = math.degrees(math.atan2(z, math.sqrt(x**2 + y**2)))
-        longitude = math.degrees(math.atan2(y, x)) - ((hrs-12)+(mins/60))*(360/24) + 24
+        longitude = math.degrees(math.atan2(y, x)) - ((hrs-12)+(mins/60))*(360/24) + 32
         if (longitude > 180):
             location_data['LONGITUDE'] = longitude - 360
         elif (longitude < -180):
