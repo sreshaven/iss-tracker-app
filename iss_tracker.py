@@ -233,6 +233,8 @@ def get_comment_data() -> list:
     Returns:
         output (list): list of comments in ISS dataset
     """
+    if len(iss_data) == 0:
+        return []
     output = iss_data_all['ndm']['oem']['body']['segment']['data']['COMMENT']
     return output
 
@@ -247,6 +249,8 @@ def get_header_data() -> dict:
     Returns:
         output (dict): header dictionary in ISS dataset
     """
+    if len(iss_data) == 0:
+        return {}
     output = iss_data_all['ndm']['oem']['header']
     return output
 
@@ -261,6 +265,8 @@ def get_metadata() -> dict:
     Returns:
         output (dict): metadata dictionary in ISS dataset
     """
+    if len(iss_data) == 0:
+        return {}
     output = iss_data_all['ndm']['oem']['body']['segment']['metadata']
     return output
 
